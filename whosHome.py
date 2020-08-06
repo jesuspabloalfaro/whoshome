@@ -2,7 +2,7 @@ import pyshark
 import re
 
 #Authorized Macs
-auth_macs = ['48:b8:a3:eb:39:83', '64:76:ba:97:80:08']
+auth_macs = []
 
 def scan(network_interface):
     #Capture From Source
