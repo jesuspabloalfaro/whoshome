@@ -1,8 +1,7 @@
 import pyshark
 import re
-
-#Authorized Macs
-auth_macs = []
+import csv
+import os
 
 def scan(network_interface):
     #Capture From Source
@@ -10,6 +9,7 @@ def scan(network_interface):
 
     #Loop through each incoming packet
     for packet in cap.sniff_continuously():
+        isKnown = False
         #Filter out to lowest layer (ETH)
         text = str(packet.layers[3])
         pattern = r'(Client MAC address: (\w{2}):(\w{2}):(\w{2}):(\w{2}):(\w{2}):(\w{2}))'
@@ -27,31 +27,48 @@ def scan(network_interface):
         text = str(packet.layers[3])
         pattern = r'(Host Name: (.*))'
         result = re.search(pattern, text)
+       
+        date = os.popen('date').read()
 
-        text = result.group()
-        pattern = r'((?<=\:\s).*)'
-        result = re.search(pattern, text)
+        try: 
+            text = result.group()
+            pattern = r'((?<=\:\s).*)'
+            result = re.search(pattern, text)
 
-        host = str(result.group()).rstrip()
+            host = str(result.group()).rstrip()
+        except:
+            host = "NULL"
 
-        #Process mac addr if host is known or not
-        if result is not None:
-            #Parse through authorized macs
-            for a_mac in auth_macs:
-                #CHANGE THIS FOR TESTING NEW MAC ADDR
-                if(str(mac) == a_mac):
+        try:
+            with open('macs.csv', mode='r') as csv_file:
+                csv_reader = csv.DictReader(csv_file)
+        except:
+                print("No macs.csv File")
+
+
+            #Process mac addr if host is known or not
+            if result is not None:
+                #Parse through authorized macs
+                for row in csv_reader:
+                    #CHANGE THIS FOR TESTING NEW MAC ADDR
+                    if(str(mac) == row["macs"]):
+                        isKnown = True
+                    else:
+                        pass
+
+                if(isKnown == True):
                     pass
                 else:
                     #Print to screen
                     a = "UNAUTHORIZED MAC:"
-                    print(a + ' ' + host + ' ' + mac)
+                    print(date + ' ' + a + ' ' + host + ' ' + mac)
 
                     #Write to log file
-                    f = open("maclogs.txt", "a")
-                    f.write("{} {} {}\n".format(a, host, mac))
+                    f = open("/var/log/whoshome/maclogs.txt", "a")
+                    f.write("{} {} {} {}\n".format(date, a, host, mac))
                     f.close()
 
 #START
 if __name__ == "__main__":
     #CHANGE THIS FOR DIFFERENT INTERFACES
-    scan('Ethernet')        
+    scan('eth0')
